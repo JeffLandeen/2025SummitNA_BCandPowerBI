@@ -1,0 +1,10 @@
+*.app
+*.g.xlf
+**/settings.json
+**/rad.json
+**/launch.json
+permissionsAnalyzer.json
+*.alcache
+*.altemplates
+*.VSCodeCounter
+AppSourceCop.json
