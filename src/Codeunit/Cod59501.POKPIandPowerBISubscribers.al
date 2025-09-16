@@ -21,4 +21,15 @@ codeunit 59501 "POKPIandPowerBI Subscribers"
         end;
     end;
 
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", OnBeforePostPurchaseDoc, '', false, false)]
+    local procedure "Purch.-Post_OnBeforePostPurchaseDoc"(var Sender: Codeunit "Purch.-Post"; var PurchaseHeader: Record "Purchase Header"; PreviewMode: Boolean; CommitIsSupressed: Boolean; var HideProgressWindow: Boolean; var ItemJnlPostLine: Codeunit "Item Jnl.-Post Line"; var IsHandled: Boolean)
+    var
+        LocalPurchLine: record "Purchase Line";
+    begin
+        if PurchaseHeader."Test Purchase Order" then begin
+            LocalPurchLine.SetRange("Document Type", PurchaseHeader."Document Type");
+            LocalPurchLine.SetRange("Document No.", PurchaseHeader."No.");
+            LocalPurchLine.ModifyAll("Test Purchase Order", PurchaseHeader."Test Purchase Order", true);
+        end;
+    end;
 }

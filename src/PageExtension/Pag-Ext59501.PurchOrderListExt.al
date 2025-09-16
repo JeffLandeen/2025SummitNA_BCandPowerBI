@@ -31,6 +31,23 @@ pageextension 59501 "PurchOrderList Ext" extends "Purchase Order List"
                     CreateTestPOs.GenerateTestPurchaseOrders();
                 end;
             }
+            action("Generate and Post Test POs")
+            {
+                ApplicationArea = All;
+                Caption = 'Generate & Post Test POs';
+                Image = PostInventoryToGLTest;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedIsBig = true;
+                ToolTip = 'Find all Test POs and post their receipt and invoices.';
+
+                trigger OnAction()
+                var
+                    CreateTestPOs: Codeunit "Create Test POs";
+                begin
+                    CreateTestPOs.GenerateAndPostTestPOs();
+                end;
+            }
         }
     }
 
