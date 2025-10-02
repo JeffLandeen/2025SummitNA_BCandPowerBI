@@ -12,6 +12,15 @@ codeunit 59500 "Create Test POs"
         PostAllTestInvoices();
     end;
 
+    procedure PostTestPOs()
+    begin
+        //Step 1: Update and post Purchase Receipts
+        PostAllTestReceipts();
+
+        //Step 2: Update and post Purchase Invoices 
+        PostAllTestInvoices();
+    end;
+
     procedure GenerateTestPurchaseOrders()
     var
         VendorRec: Record Vendor;

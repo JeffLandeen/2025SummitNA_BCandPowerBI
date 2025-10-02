@@ -39,13 +39,30 @@ pageextension 59501 "PurchOrderList Ext" extends "Purchase Order List"
                 Promoted = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
-                ToolTip = 'Find all Test POs and post their receipt and invoices.';
+                ToolTip = 'Will Generate 100 new random POs, and post all existing Test POs (Receipts and Invoices).';
 
                 trigger OnAction()
                 var
                     CreateTestPOs: Codeunit "Create Test POs";
                 begin
                     CreateTestPOs.GenerateAndPostTestPOs();
+                end;
+            }
+            action("Post Test POs")
+            {
+                ApplicationArea = All;
+                Caption = 'Post Test POs';
+                Image = PostedReceipt;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedIsBig = true;
+                ToolTip = 'Find all Test POs and post their receipt and invoices.';
+
+                trigger OnAction()
+                var
+                    CreateTestPOs: Codeunit "Create Test POs";
+                begin
+                    CreateTestPOs.PostTestPOs();
                 end;
             }
         }
