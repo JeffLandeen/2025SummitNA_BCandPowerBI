@@ -36,8 +36,8 @@ codeunit 59500 "Create Test POs"
         Window: Dialog;
     begin
         Window.Open('Collecting Data: #1###############\\' +
-                   'Creating Order @2@@@@ of @3@@@@\' +
-                   'Adding Lines: @4@@@@ of @5@@@@');
+                   'Creating Order #2### of #3###\' +
+                   'Adding Lines: #4### of #5###');
         // Step 1: Collect 4–5 random vendors
         Window.Update(1, 'Collecting vendors...');
         VendorRec.Reset();
@@ -53,6 +53,7 @@ codeunit 59500 "Create Test POs"
         ItemRec.Reset();
         ItemRec.SetRange("Blocked", false);
         ItemRec.SetRange(Type, ItemRec.Type::Inventory);
+        itemrec.SetFilter("Item Tracking Code", '=%1', '');
         ItemRec.FindSet();
         while ItemRec.Next() <> 0 do begin
             ItemList.Add(ItemRec."No.");
@@ -129,12 +130,15 @@ codeunit 59500 "Create Test POs"
                         if (QuantityToHandle > 0) then begin
                             PurchLine.Validate("Qty. to Receive", QuantityToHandle);
                             PurchLine.Modify(true);
+                            NeedsReceiving := true;
                         end;
                     until (PurchLine.Next() = 0);
                 end;
+                Commit();
                 PurchHeader.Receive := true;
                 PurchHeader.Invoice := false;
-                PurchPost.Run(PurchHeader);
+                if NeedsReceiving then
+                    if not PurchPost.Run(PurchHeader) then; //do nothing if posting fails
                 CurrentCount += 1;
                 Window.Update(1, CurrentCount);
             until (PurchHeader.Next() = 0);
@@ -149,7 +153,7 @@ codeunit 59500 "Create Test POs"
         PurchLine: Record "Purchase Line";
         PurchPost: Codeunit "Purch.-Post";
         QuantityToHandle: Decimal;
-        NeedsReceiving: Boolean;
+        NeedsInvoicing: Boolean;
         Window: Dialog;
         TotalCount: Integer;
         CurrentCount: Integer;
@@ -164,7 +168,12 @@ codeunit 59500 "Create Test POs"
         PurchHeader.SetRange("Test Purchase Order", true);
         if PurchHeader.FindSet() then begin
             repeat
-                NeedsReceiving := false;
+                NeedsInvoicing := false;
+
+                if PurchHeader."Vendor Invoice No." = '' then begin
+                    PurchHeader.Validate("Vendor Invoice No.", 'INV' + Format(CurrentCount + 1, 0, '<Integer>'));
+                    PurchHeader.Modify(true);
+                end;
 
                 PurchLine.Reset();
                 purchline.SetRange("Document Type", PurchHeader."Document Type");
@@ -172,10 +181,12 @@ codeunit 59500 "Create Test POs"
                 PurchLine.SetRange(Type, PurchLine.Type::Item);
                 if PurchLine.FindSet() then begin
                     repeat
-                        QuantityToHandle := PurchLine.Quantity - PurchLine."Quantity Invoiced";
+                        QuantityToHandle := PurchLine."Quantity Received" - PurchLine."Quantity Invoiced";
+
                         if (QuantityToHandle > 0) then begin
                             PurchLine.Validate("Qty. to Invoice", QuantityToHandle);
                             PurchLine.Modify(true);
+                            NeedsInvoicing := true;
                         end;
                     until (PurchLine.Next() = 0);
                 end;
@@ -183,7 +194,10 @@ codeunit 59500 "Create Test POs"
                 PurchHeader2.GET(PurchHeader."Document Type", PurchHeader."No.");
                 PurchHeader2.Receive := false;
                 PurchHeader2.Invoice := true;
-                PurchPost.Run(PurchHeader2);
+
+                Commit();
+                if NeedsInvoicing then
+                    if not PurchPost.Run(PurchHeader2) then; //do nothing if posting fails
                 CurrentCount += 1;
                 Window.Update(1, CurrentCount);
             until (PurchHeader.Next() = 0);
