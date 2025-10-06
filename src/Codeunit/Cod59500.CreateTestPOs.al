@@ -2,13 +2,14 @@ codeunit 59500 "Create Test POs"
 {
     procedure GenerateAndPostTestPOs()
     begin
+
         //Step 1: Generate Purchase Orders
         GenerateTestPurchaseOrders();
 
         //step 2: Update and post Purchase Receipts
         PostAllTestReceipts();
 
-        //Step 3: Update and post Purchase Invoices 
+        //Step 3: Update and post Purchase Invoices
         PostAllTestInvoices();
     end;
 
@@ -32,8 +33,13 @@ codeunit 59500 "Create Test POs"
         i, j, NumLines, Qty : Integer;
         VendorCode: Code[20];
         NewLineNo: Integer;
+        Window: Dialog;
     begin
+        Window.Open('Collecting Data: #1###############\\' +
+                   'Creating Order @2@@@@ of @3@@@@\' +
+                   'Adding Lines: @4@@@@ of @5@@@@');
         // Step 1: Collect 4–5 random vendors
+        Window.Update(1, 'Collecting vendors...');
         VendorRec.Reset();
         VendorRec.SetRange("Blocked", VendorRec.Blocked::" ");
         VendorRec.FindSet();
@@ -43,6 +49,7 @@ codeunit 59500 "Create Test POs"
         end;
 
         // Step 2: Collect available items
+        Window.Update(1, 'Collecting items...');
         ItemRec.Reset();
         ItemRec.SetRange("Blocked", false);
         ItemRec.SetRange(Type, ItemRec.Type::Inventory);
@@ -52,7 +59,9 @@ codeunit 59500 "Create Test POs"
         end;
 
         // Step 3: Create 100 purchase orders
+        Window.Update(3, 100);
         for i := 1 to 100 do begin
+            Window.Update(2, i);
             VendorCode := VendorList.Get((System.Random(VendorList.Count())));
             Clear(PurchHeader);
             PurchHeader.Init();
@@ -66,7 +75,9 @@ codeunit 59500 "Create Test POs"
             // Step 4: Add 1–7 item lines
             NewLineNo := 0;
             NumLines := System.Random(7) + 1;
+            Window.Update(5, NumLines);
             for j := 1 to NumLines do begin
+                Window.Update(4, j);
                 NewLineNo += 10000;
                 Clear(PurchLine);
                 PurchLine.Init();
@@ -81,6 +92,7 @@ codeunit 59500 "Create Test POs"
             end;
         end;
 
+        Window.Close();
         Message('100 Purchase Orders have been created.');
     end;
 
@@ -91,7 +103,17 @@ codeunit 59500 "Create Test POs"
         PurchPost: Codeunit "Purch.-Post";
         QuantityToHandle: Decimal;
         NeedsReceiving: Boolean;
+        Window: Dialog;
+        TotalCount: Integer;
+        CurrentCount: Integer;
     begin
+        Window.Open('Posting Receipts: #1#### of #2####');
+
+        // Get total count
+        PurchHeader.SetRange("Test Purchase Order", true);
+        TotalCount := PurchHeader.Count;
+        Window.Update(2, TotalCount);
+        CurrentCount := 0;
         PurchHeader.SetRange("Test Purchase Order", true);
         if PurchHeader.FindSet() then begin
             repeat
@@ -113,8 +135,11 @@ codeunit 59500 "Create Test POs"
                 PurchHeader.Receive := true;
                 PurchHeader.Invoice := false;
                 PurchPost.Run(PurchHeader);
+                CurrentCount += 1;
+                Window.Update(1, CurrentCount);
             until (PurchHeader.Next() = 0);
         end;
+        Window.Close();
     end;
 
     local procedure PostAllTestInvoices()
@@ -125,7 +150,17 @@ codeunit 59500 "Create Test POs"
         PurchPost: Codeunit "Purch.-Post";
         QuantityToHandle: Decimal;
         NeedsReceiving: Boolean;
+        Window: Dialog;
+        TotalCount: Integer;
+        CurrentCount: Integer;
     begin
+        Window.Open('Posting Invoices: #1#### of #2####');
+
+        // Get total count
+        PurchHeader.SetRange("Test Purchase Order", true);
+        TotalCount := PurchHeader.Count;
+        Window.Update(2, TotalCount);
+        CurrentCount := 0;
         PurchHeader.SetRange("Test Purchase Order", true);
         if PurchHeader.FindSet() then begin
             repeat
@@ -149,8 +184,11 @@ codeunit 59500 "Create Test POs"
                 PurchHeader2.Receive := false;
                 PurchHeader2.Invoice := true;
                 PurchPost.Run(PurchHeader2);
+                CurrentCount += 1;
+                Window.Update(1, CurrentCount);
             until (PurchHeader.Next() = 0);
         end;
+        Window.Close();
     end;
 
 }
