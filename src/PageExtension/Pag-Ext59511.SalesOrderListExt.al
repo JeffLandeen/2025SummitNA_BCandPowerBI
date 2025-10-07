@@ -31,23 +31,23 @@ pageextension 59511 "SalesOrderList Ext" extends "Sales Order List"
                     CreateTestSOs.GenerateTestSalesOrders();
                 end;
             }
-            action("Generate and Post Test SOs")
-            {
-                ApplicationArea = All;
-                Caption = 'Generate & Post Test SOs';
-                Image = PostInventoryToGLTest;
-                Promoted = true;
-                PromotedCategory = Process;
-                PromotedIsBig = true;
-                ToolTip = 'Will Generate 100 new random SOs, and post all existing Test SOs (Shipments and Invoices).';
+            // action("Generate and Post Test SOs")
+            // {
+            //     ApplicationArea = All;
+            //     Caption = 'Generate & Post Test SOs';
+            //     Image = PostInventoryToGLTest;
+            //     Promoted = true;
+            //     PromotedCategory = Process;
+            //     PromotedIsBig = true;
+            //     ToolTip = 'Will Generate 100 new random SOs, and post all existing Test SOs (Shipments and Invoices).';
 
-                trigger OnAction()
-                var
-                    CreateTestSOs: Codeunit "Create Test SOs";
-                begin
-                    CreateTestSOs.GenerateAndPostTestSOs();
-                end;
-            }
+            //     trigger OnAction()
+            //     var
+            //         CreateTestSOs: Codeunit "Create Test SOs";
+            //     begin
+            //         CreateTestSOs.GenerateAndPostTestSOs();
+            //     end;
+            // }
             action("Post Test SOs")
             {
                 ApplicationArea = All;
