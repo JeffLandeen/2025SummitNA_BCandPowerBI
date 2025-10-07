@@ -47,6 +47,7 @@ codeunit 59503 "Create Test SOs"
         ItemRec: Record Item;
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
+        TEMPItemBuffer: Record "Item Location Variant Buffer" temporary;
         CustomerList: List of [Code[20]];
         ItemList: List of [Code[20]];
         i, j, NumLines, Qty : Integer;
@@ -111,11 +112,39 @@ codeunit 59503 "Create Test SOs"
                 SalesLine.validate("No.", ItemList.Get(System.Random(ItemList.Count)));
                 SalesLine.validate(Quantity, System.Random(34) + 1);
                 SalesLine.Modify(true);
+                AddOrUpdateItemBuffer(SalesLine, TEMPItemBuffer);
             end;
         end;
 
         Window.Close();
         Message('100 Sales Orders have been created.');
+
+        TEMPItemBuffer.Reset();
+        if TEMPItemBuffer.FindSet() then begin
+            repeat
+                CreateAndPostTestItemQty(TEMPItemBuffer."Location Code", TEMPItemBuffer."Item No.", TEMPItemBuffer.Value1);
+            until (TEMPItemBuffer.Next() = 0);
+        end
+    end;
+
+    local procedure AddOrUpdateItemBuffer(var SLine: Record "Sales Line"; var ItemBuffer: Record "Item Location Variant Buffer" temporary)
+    begin
+        AddOrUpdateItemBuffer(SLine."No.", SLine."Location Code", sline.Quantity, ItemBuffer);
+    end;
+
+    local procedure AddOrUpdateItemBuffer(ItemNo: Code[20]; LocationCode: Code[10]; Qty: Decimal; var ItemBuffer: Record "Item Location Variant Buffer" temporary)
+    begin
+        if not ItemBuffer.get(ItemNo, '', LocationCode) then begin
+            ItemBuffer.Init();
+            ItemBuffer."Item No." := ItemNo;
+            ItemBuffer."Variant Code" := '';
+            ItemBuffer."Location Code" := LocationCode;
+            ItemBuffer.Value1 := Qty;
+            ItemBuffer.Insert();
+        end else begin
+            ItemBuffer.Value1 += Qty;
+            ItemBuffer.Modify();
+        end;
     end;
 
     local procedure PostAllTestShipments()
