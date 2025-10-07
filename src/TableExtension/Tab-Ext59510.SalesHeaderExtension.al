@@ -28,11 +28,11 @@ tableextension 59510 "SalesHeader Extension" extends "Sales Header"
                 CalculateShipmentDelay();
             end;
         }
-        field(59512; "Receipt Delay"; Duration)
+        field(59512; "Shipment Delay"; Duration)
         {
-            Caption = 'Receipt Delay';
+            Caption = 'Shipment Delay';
             DataClassification = SystemMetadata;
-            ToolTip = 'This is the difference in days between the Target Receipt Date and the First Receipt Date, will be negative value if the First Receipt Date is earlier than the Target Receipt Date.';
+            ToolTip = 'This is the difference in days between the Target Shipment Date and the First Shipment Date, will be negative value if the First Shipment Date is earlier than the Target Shipment Date.';
             Editable = false;
         }
     }
@@ -40,8 +40,8 @@ tableextension 59510 "SalesHeader Extension" extends "Sales Header"
     local procedure CalculateShipmentDelay()
     begin
         if (Rec."Target Shipment Date" <> 0D) and (Rec."First Shipment Date" <> 0D) then
-            Rec."Receipt Delay" := Rec."First Shipment Date" - Rec."Target Shipment Date"
+            Rec."Shipment Delay" := Rec."First Shipment Date" - Rec."Target Shipment Date"
         else
-            Rec."Receipt Delay" := 0;
+            Rec."Shipment Delay" := 0;
     end;
 }
