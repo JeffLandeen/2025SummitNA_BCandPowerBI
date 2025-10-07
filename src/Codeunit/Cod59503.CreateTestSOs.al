@@ -89,11 +89,12 @@ codeunit 59503 "Create Test SOs"
             SalesHeader.Init();
             SalesHeader.validate("Document Type", SalesHeader."Document Type"::Order);
             SalesHeader.validate("Sell-to Customer No.", CustomerCode);
+            SalesHeader.insert(true);
             GetLocationFromSetup(LocationCode);
             SalesHeader.Validate("Location Code", LocationCode);
             SalesHeader.validate("Test Sales Order", true);
             SalesHeader.validate("Shipment Date", WorkDate + (System.Random(30) + 1));
-            SalesHeader.Insert(true);
+            SalesHeader.Modify(true);
 
             // Step 4: Add 1–7 item lines
             NewLineNo := 0;
@@ -110,6 +111,7 @@ codeunit 59503 "Create Test SOs"
                 SalesLine.Insert(true);
                 SalesLine.validate(Type, SalesLine.Type::Item);
                 SalesLine.validate("No.", ItemList.Get(System.Random(ItemList.Count)));
+                SalesLine.validate("Location Code", SalesHeader."Location Code");
                 SalesLine.validate(Quantity, System.Random(34) + 1);
                 SalesLine.Modify(true);
                 AddOrUpdateItemBuffer(SalesLine, TEMPItemBuffer);
@@ -122,9 +124,13 @@ codeunit 59503 "Create Test SOs"
         TEMPItemBuffer.Reset();
         if TEMPItemBuffer.FindSet() then begin
             repeat
-                CreateAndPostTestItemQty(TEMPItemBuffer."Location Code", TEMPItemBuffer."Item No.", TEMPItemBuffer.Value1);
+                CreateTestItemQtyJnlLine(TEMPItemBuffer."Location Code", TEMPItemBuffer."Item No.", TEMPItemBuffer.Value1);
             until (TEMPItemBuffer.Next() = 0);
-        end
+        end;
+
+        Commit();
+
+        PostNewItemJnlLines();
     end;
 
     local procedure AddOrUpdateItemBuffer(var SLine: Record "Sales Line"; var ItemBuffer: Record "Item Location Variant Buffer" temporary)
@@ -255,7 +261,7 @@ codeunit 59503 "Create Test SOs"
         Window.Close();
     end;
 
-    procedure CreateAndPostTestItemQty(LocationCode: Code[10]; ItemNo: Code[20]; QtyToPost: Decimal)
+    local procedure CreateTestItemQtyJnlLine(LocationCode: Code[10]; ItemNo: Code[20]; QtyToPost: Decimal)
     var
         InventorySetup: Record "Inventory Setup";
         ItemJnlLine: Record "Item Journal Line";
@@ -269,6 +275,7 @@ codeunit 59503 "Create Test SOs"
         ItemErr: Label 'Item %1 does not exist.', Comment = '%1 = Item No.';
         LocationErr: Label 'Location %1 does not exist.', Comment = '%1 = Location Code';
         QtyErr: Label 'Quantity to post must be greater than 0.';
+        LastLineNo: Integer;
     begin
         // Validate parameters
         if QtyToPost <= 0 then
@@ -300,14 +307,17 @@ codeunit 59503 "Create Test SOs"
         ItemJnlLine.Reset();
         ItemJnlLine.SetRange("Journal Template Name", InventorySetup."Test Data Item Jnl. Template");
         ItemJnlLine.SetRange("Journal Batch Name", InventorySetup."Test Data Item Jnl. Batch");
-        if ItemJnlLine.FindLast() then;
+        if ItemJnlLine.FindLast() then
+            LastLineNo := ItemJnlLine."Line No."
+        else
+            LastLineNo := 0;
 
         // Create and post the adjustment
         Clear(ItemJnlLine);
         ItemJnlLine.Init();
         ItemJnlLine.Validate("Journal Template Name", InventorySetup."Test Data Item Jnl. Template");
         ItemJnlLine.Validate("Journal Batch Name", InventorySetup."Test Data Item Jnl. Batch");
-        ItemJnlLine."Line No." := ItemJnlLine."Line No." + 10000;
+        ItemJnlLine."Line No." := LastLineNo + 10000;
         ItemJnlLine.Insert(true);
 
         ItemJnlLine.Validate("Posting Date", WorkDate());
@@ -317,7 +327,60 @@ codeunit 59503 "Create Test SOs"
         ItemJnlLine.Validate("Location Code", LocationCode);
         ItemJnlLine.Validate(Quantity, QtyToPost);
         ItemJnlLine.Modify(true);
+    end;
 
-        Codeunit.Run(Codeunit::"Item Jnl.-Post", ItemJnlLine);
+    local procedure PostNewItemJnlLines()
+    var
+        InventorySetup: Record "Inventory Setup";
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        NoSetupErr: Label 'Test Data Item Journal Template and Batch must be set in Inventory Setup.';
+        TemplateErr: Label 'Item Journal Template %1 does not exist.', Comment = '%1 = Template Code';
+        BatchErr: Label 'Item Journal Batch %1 does not exist in Template %2.', Comment = '%1 = Batch Code, %2 = Template Code';
+        NoLinesErr: Label 'No lines found to post in Item Journal Batch %1.', Comment = '%1 = Batch Name';
+        Window: Dialog;
+        TotalLines: Integer;
+        CurrentLine: Integer;
+    begin
+        // Get and validate setup
+        InventorySetup.Get();
+        if (InventorySetup."Test Data Item Jnl. Template" = '') or
+           (InventorySetup."Test Data Item Jnl. Batch" = '') then
+            Error(NoSetupErr);
+
+        if not ItemJnlTemplate.Get(InventorySetup."Test Data Item Jnl. Template") then
+            Error(TemplateErr, InventorySetup."Test Data Item Jnl. Template");
+
+        ItemJnlBatch.Reset();
+        ItemJnlBatch.SetRange("Journal Template Name", InventorySetup."Test Data Item Jnl. Template");
+        ItemJnlBatch.SetRange(Name, InventorySetup."Test Data Item Jnl. Batch");
+        if not ItemJnlBatch.FindFirst() then
+            Error(BatchErr, InventorySetup."Test Data Item Jnl. Batch",
+                          InventorySetup."Test Data Item Jnl. Template");
+
+        // Find lines to post
+        ItemJnlLine.Reset();
+        ItemJnlLine.SetRange("Journal Template Name", InventorySetup."Test Data Item Jnl. Template");
+        ItemJnlLine.SetRange("Journal Batch Name", InventorySetup."Test Data Item Jnl. Batch");
+        TotalLines := ItemJnlLine.Count;
+
+        if TotalLines = 0 then
+            Error(NoLinesErr, InventorySetup."Test Data Item Jnl. Batch");
+
+        // Show progress dialog
+        Window.Open('Posting Item Journal Lines: #1#### of #2####');
+        Window.Update(2, TotalLines);
+        CurrentLine := 0;
+
+        if ItemJnlLine.FindSet() then
+            repeat
+                CurrentLine += 1;
+                Window.Update(1, CurrentLine);
+                Codeunit.Run(Codeunit::"Item Jnl.-Post", ItemJnlLine);
+            until ItemJnlLine.Next() = 0;
+
+        Window.Close();
+        Message('Successfully posted %1 item journal lines.', TotalLines);
     end;
 }

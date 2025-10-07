@@ -88,11 +88,12 @@ codeunit 59500 "Create Test POs"
             PurchHeader.Init();
             PurchHeader.validate("Document Type", PurchHeader."Document Type"::Order);
             PurchHeader.validate("Buy-from Vendor No.", VendorCode);
+            PurchHeader.Insert(true);
             GetLocationFromSetup(LocationCode);
             PurchHeader.Validate("Location Code", LocationCode);
             PurchHeader.validate("Test Purchase Order", true);
             PurchHeader.validate("Expected Receipt Date", WorkDate + (System.Random(30) + 1));
-            PurchHeader.Insert(true);
+            PurchHeader.Modify(true);
 
             // Step 4: Add 1–7 item lines
             NewLineNo := 0;
