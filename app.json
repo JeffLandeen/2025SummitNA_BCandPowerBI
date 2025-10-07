@@ -1,8 +1,8 @@
 {
   "id": "fe3dcf6d-d1a9-42c1-8e1e-7e603d773d7a",
   "name": "BC to Power BI Connector",
-  "publisher": "RSM US LLP",
-  "version": "1.0.0.0",
+  "publisher": "JLBGRSMUSLLP",
+  "version": "2.0.0.0",
   "brief": "Expose query to Power BI to support simple KPI reporting",
   "description": "Expose query to Power BI to support simple KPI reporting",
   "privacyStatement": "",
