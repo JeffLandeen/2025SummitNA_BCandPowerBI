@@ -1,5 +1,25 @@
 codeunit 59503 "Create Test SOs"
 {
+    var
+        LocationCode: Code[10];
+
+    local procedure GetLocationFromSetup(var ToLocationCode: Code[10])
+    var
+        InventorySetup: Record "Inventory Setup";
+        Location: Record Location;
+        LocationErr: Label 'Test Doc. Location must be set in Inventory Setup before generating test documents.';
+        InvalidLocationErr: Label 'The location %1 specified in Inventory Setup is not a valid location code.', Comment = '%1 = Location Code';
+    begin
+        InventorySetup.Get();
+        if InventorySetup."Test Doc. Location" = '' then
+            Error(LocationErr);
+
+        if not Location.Get(InventorySetup."Test Doc. Location") then
+            Error(InvalidLocationErr, InventorySetup."Test Doc. Location");
+
+        ToLocationCode := InventorySetup."Test Doc. Location";
+    end;
+
     procedure GenerateAndPostTestSOs()
     begin
         //Step 1: Generate Sales Orders
@@ -68,7 +88,8 @@ codeunit 59503 "Create Test SOs"
             SalesHeader.Init();
             SalesHeader.validate("Document Type", SalesHeader."Document Type"::Order);
             SalesHeader.validate("Sell-to Customer No.", CustomerCode);
-            SalesHeader.validate("Location Code", 'BLUE');
+            GetLocationFromSetup(LocationCode);
+            SalesHeader.Validate("Location Code", LocationCode);
             SalesHeader.validate("Test Sales Order", true);
             SalesHeader.validate("Shipment Date", WorkDate + (System.Random(30) + 1));
             SalesHeader.Insert(true);
@@ -203,5 +224,71 @@ codeunit 59503 "Create Test SOs"
             until (SalesHeader.Next() = 0);
         end;
         Window.Close();
+    end;
+
+    procedure CreateAndPostTestItemQty(LocationCode: Code[10]; ItemNo: Code[20]; QtyToPost: Decimal)
+    var
+        InventorySetup: Record "Inventory Setup";
+        ItemJnlLine: Record "Item Journal Line";
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        Item: Record Item;
+        Location: Record Location;
+        NoSetupErr: Label 'Test Data Item Journal Template and Batch must be set in Inventory Setup.';
+        TemplateErr: Label 'Item Journal Template %1 does not exist.', Comment = '%1 = Template Code';
+        BatchErr: Label 'Item Journal Batch %1 does not exist in Template %2.', Comment = '%1 = Batch Code, %2 = Template Code';
+        ItemErr: Label 'Item %1 does not exist.', Comment = '%1 = Item No.';
+        LocationErr: Label 'Location %1 does not exist.', Comment = '%1 = Location Code';
+        QtyErr: Label 'Quantity to post must be greater than 0.';
+    begin
+        // Validate parameters
+        if QtyToPost <= 0 then
+            Error(QtyErr);
+
+        if not Item.Get(ItemNo) then
+            Error(ItemErr, ItemNo);
+
+        if not Location.Get(LocationCode) then
+            Error(LocationErr, LocationCode);
+
+        // Get and validate setup
+        InventorySetup.Get();
+        if (InventorySetup."Test Data Item Jnl. Template" = '') or
+           (InventorySetup."Test Data Item Jnl. Batch" = '') then
+            Error(NoSetupErr);
+
+        if not ItemJnlTemplate.Get(InventorySetup."Test Data Item Jnl. Template") then
+            Error(TemplateErr, InventorySetup."Test Data Item Jnl. Template");
+
+        ItemJnlBatch.Reset();
+        ItemJnlBatch.SetRange("Journal Template Name", InventorySetup."Test Data Item Jnl. Template");
+        ItemJnlBatch.SetRange(Name, InventorySetup."Test Data Item Jnl. Batch");
+        if not ItemJnlBatch.FindFirst() then
+            Error(BatchErr, InventorySetup."Test Data Item Jnl. Batch",
+                          InventorySetup."Test Data Item Jnl. Template");
+
+        // Find next line number
+        ItemJnlLine.Reset();
+        ItemJnlLine.SetRange("Journal Template Name", InventorySetup."Test Data Item Jnl. Template");
+        ItemJnlLine.SetRange("Journal Batch Name", InventorySetup."Test Data Item Jnl. Batch");
+        if ItemJnlLine.FindLast() then;
+
+        // Create and post the adjustment
+        Clear(ItemJnlLine);
+        ItemJnlLine.Init();
+        ItemJnlLine.Validate("Journal Template Name", InventorySetup."Test Data Item Jnl. Template");
+        ItemJnlLine.Validate("Journal Batch Name", InventorySetup."Test Data Item Jnl. Batch");
+        ItemJnlLine."Line No." := ItemJnlLine."Line No." + 10000;
+        ItemJnlLine.Insert(true);
+
+        ItemJnlLine.Validate("Posting Date", WorkDate());
+        ItemJnlLine.Validate("Document No.", Format(CurrentDateTime, 0, '<Year4><Month,2><Day,2><Hours24,2><Minutes,2><Seconds,2>'));
+        ItemJnlLine.Validate("Entry Type", ItemJnlLine."Entry Type"::"Positive Adjmt.");
+        ItemJnlLine.Validate("Item No.", ItemNo);
+        ItemJnlLine.Validate("Location Code", LocationCode);
+        ItemJnlLine.Validate(Quantity, QtyToPost);
+        ItemJnlLine.Modify(true);
+
+        Codeunit.Run(Codeunit::"Item Jnl.-Post", ItemJnlLine);
     end;
 }

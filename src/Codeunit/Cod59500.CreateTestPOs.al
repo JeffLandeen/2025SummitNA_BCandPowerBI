@@ -1,5 +1,25 @@
 codeunit 59500 "Create Test POs"
 {
+    var
+        LocationCode: Code[10];
+
+    local procedure GetLocationFromSetup(var ToLocationCode: Code[10])
+    var
+        InventorySetup: Record "Inventory Setup";
+        Location: Record Location;
+        LocationErr: Label 'Test Doc. Location must be set in Inventory Setup before generating test documents.';
+        InvalidLocationErr: Label 'The location %1 specified in Inventory Setup is not a valid location code.', Comment = '%1 = Location Code';
+    begin
+        InventorySetup.Get();
+        if InventorySetup."Test Doc. Location" = '' then
+            Error(LocationErr);
+
+        if not Location.Get(InventorySetup."Test Doc. Location") then
+            Error(InvalidLocationErr, InventorySetup."Test Doc. Location");
+
+        ToLocationCode := InventorySetup."Test Doc. Location";
+    end;
+
     procedure GenerateAndPostTestPOs()
     begin
 
@@ -68,7 +88,8 @@ codeunit 59500 "Create Test POs"
             PurchHeader.Init();
             PurchHeader.validate("Document Type", PurchHeader."Document Type"::Order);
             PurchHeader.validate("Buy-from Vendor No.", VendorCode);
-            PurchHeader.validate("Location Code", 'BLUE');
+            GetLocationFromSetup(LocationCode);
+            PurchHeader.Validate("Location Code", LocationCode);
             PurchHeader.validate("Test Purchase Order", true);
             PurchHeader.validate("Expected Receipt Date", WorkDate + (System.Random(30) + 1));
             PurchHeader.Insert(true);
