@@ -113,6 +113,8 @@ codeunit 59503 "Create Test SOs"
                 SalesLine.validate("No.", ItemList.Get(System.Random(ItemList.Count)));
                 SalesLine.validate("Location Code", SalesHeader."Location Code");
                 SalesLine.validate(Quantity, System.Random(34) + 1);
+                if SalesLine."Unit Price" = 0 then
+                    SalesLine.validate("Unit Price", 10 + System.Random(690) + (System.Random(99) / 100));
                 SalesLine.Modify(true);
                 AddOrUpdateItemBuffer(SalesLine, TEMPItemBuffer);
             end;

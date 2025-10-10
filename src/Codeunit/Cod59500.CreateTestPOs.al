@@ -111,6 +111,8 @@ codeunit 59500 "Create Test POs"
                 PurchLine.validate(Type, PurchLine.Type::Item);
                 PurchLine.validate("No.", ItemList.Get(System.Random(ItemList.Count)));
                 PurchLine.validate(Quantity, System.Random(34) + 1);
+                if PurchLine."Direct Unit Cost" = 0 then
+                    PurchLine.validate("Direct Unit Cost", 10 + System.Random(390) + (System.Random(99) / 100));
                 PurchLine.Modify(true);
             end;
         end;

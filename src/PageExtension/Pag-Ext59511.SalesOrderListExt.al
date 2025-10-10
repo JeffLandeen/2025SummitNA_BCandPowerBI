@@ -8,6 +8,20 @@ pageextension 59511 "SalesOrderList Ext" extends "Sales Order List"
             {
                 ApplicationArea = All;
             }
+            field(SystemCreatedAt; Rec.SystemCreatedAt)
+            {
+                ApplicationArea = All;
+                Caption = 'Created At';
+                ToolTip = 'Date and time when the record was created.';
+                Editable = false;
+            }
+            field(SystemCreatedBy; Rec.SystemCreatedBy)
+            {
+                ApplicationArea = All;
+                Caption = 'Created By';
+                ToolTip = 'User ID of the user who created the record.';
+                Editable = false;
+            }
         }
     }
     actions
